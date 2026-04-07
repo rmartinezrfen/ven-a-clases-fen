@@ -19,7 +19,7 @@ const FECHAS_EXCLUIDAS = [];
 // GOOGLE APPS SCRIPT URL — Pegar aquí la URL del paso 9 de la guía
 // Dejar vacío ("") para modo demo sin conexión a Google
 // ============================================
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwzXyXKvA7UY-vXQHQaFqAHaKZjROyifdA4JWMNJYNT0u4yvvKtB_GVQuIqyzy8ARz3-w/exec";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwr75g2s5wHRLLOhrQscb_kDeCjP_jBv3AIT1_Yl0C4YqOLcZS3aaX8Gh_TyQ6jhM4/exec";
 
 const CURSOS_DEF = [
   { id:"C01", nombre:"Métodos Matemáticos I", profesor:"Adriana Piazza", emailProf:"", sala:"P-309", dias:[1, 3], hora:"12:30 – 13:50", descripcion:"En este curso se estudian los primeros lineamientos matemáticos útiles para las asignaturas de la carrera, se estudia lógica y conjuntos, funciones, sumatoria y productoria. También la aplicación de...", cuposPorFecha:3 },
@@ -180,7 +180,7 @@ export default function App(){
 
   const save=useCallback((f,i,c)=>{try{const cm={};Object.entries(f??fechas).forEach(([k,v])=>{cm[k]=v.cuposDisponibles});localStorage.setItem(SK,JSON.stringify({f:cm,i:i??insc,c:c??correos}))}catch(e){}},[fechas,insc,correos]);
 
-  const nav=v=>{setView(v);if(v!=="inscripcion")setSelF(null)};
+  const nav=v=>{setView(v);if(v!=="inscripcion")setSelF(null);if(v==="inscripcion"){try{const saved=localStorage.getItem("fen-estudiante");if(saved&&!form.nombre){const d=JSON.parse(saved);setForm(p=>({...p,...d,colOpen:false}))}}catch(e){}}};
 
   const doAdminLogin=()=>{
     if(adminPass===ADMIN_PASS){setAdminAuth(true);setAdminErr(false);setAdminPass("");setView("admin");setATab("inscritos");window.location.hash=""}
@@ -214,6 +214,8 @@ export default function App(){
         fetch(APPS_SCRIPT_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(payload)}).catch(()=>{});
       }catch(e){}
     }
+    // Guardar datos del estudiante para autocompletar en próximas inscripciones
+    try{localStorage.setItem("fen-estudiante",JSON.stringify({nombre:form.nombre,rut:form.rut,correo:form.correo,telefono:form.telefono,cursoEscolar:form.cursoEscolar,region:form.region,colegio:form.colegio,colegioOtro:form.colegioOtro,colSearch:form.colSearch,carreraInteres:form.carreraInteres}))}catch(e){}
     setForm({nombre:"",rut:"",correo:"",telefono:"",cursoEscolar:"",colegio:"",colegioOtro:"",colSearch:"",colOpen:false,region:"",carreraInteres:""});setView("confirmacion");
   };
 
