@@ -19,7 +19,7 @@ const FECHAS_EXCLUIDAS = [];
 // GOOGLE APPS SCRIPT URL — Pegar aquí la URL del paso 9 de la guía
 // Dejar vacío ("") para modo demo sin conexión a Google
 // ============================================
-const APPS_SCRIPT_URL = "";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwzXyXKvA7UY-vXQHQaFqAHaKZjROyifdA4JWMNJYNT0u4yvvKtB_GVQuIqyzy8ARz3-w/exec";
 
 const CURSOS_DEF = [
   { id:"C01", nombre:"Métodos Matemáticos I", profesor:"Adriana Piazza", emailProf:"", sala:"P-309", dias:[1, 3], hora:"12:30 – 13:50", descripcion:"En este curso se estudian los primeros lineamientos matemáticos útiles para las asignaturas de la carrera, se estudia lógica y conjuntos, funciones, sumatoria y productoria. También la aplicación de...", cuposPorFecha:3 },
@@ -210,10 +210,9 @@ export default function App(){
     // Enviar a Google Sheets + correos (si está configurado)
     if(APPS_SCRIPT_URL){
       try{
-        fetch(APPS_SCRIPT_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"application/json"},
-          body:JSON.stringify({action:"inscripcion",nombre:form.nombre,rut:form.rut,correo:form.correo,telefono:form.telefono,cursoEscolar:form.cursoEscolar,region:form.region,colegio:colegioFinal,carreraInteres:form.carreraInteres,cursoNombre:selC.nombre,cursoProfesor:selC.profesor,emailProf:selC.emailProf,fechaClase:selF.label,cursoHora:selC.hora,cursoSala:selC.sala})
-        });
-      }catch(e){console.log("Error enviando a Google Sheets:",e)}
+        const payload={action:"inscripcion",nombre:form.nombre,rut:form.rut,correo:form.correo,telefono:form.telefono,cursoEscolar:form.cursoEscolar,region:form.region,colegio:colegioFinal,carreraInteres:form.carreraInteres,cursoNombre:selC.nombre,cursoProfesor:selC.profesor,emailProf:selC.emailProf,fechaClase:selF.label,cursoHora:selC.hora,cursoSala:selC.sala};
+        fetch(APPS_SCRIPT_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(payload)}).catch(()=>{});
+      }catch(e){}
     }
     setForm({nombre:"",rut:"",correo:"",telefono:"",cursoEscolar:"",colegio:"",colegioOtro:"",colSearch:"",colOpen:false,region:"",carreraInteres:""});setView("confirmacion");
   };
