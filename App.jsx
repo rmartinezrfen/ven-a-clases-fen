@@ -19,7 +19,7 @@ const FECHAS_EXCLUIDAS = [];
 // GOOGLE APPS SCRIPT URL — Pegar aquí la URL del paso 9 de la guía
 // Dejar vacío ("") para modo demo sin conexión a Google
 // ============================================
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxQRC_cUs81aDbUCqx6USZITP6R1oPqN6cwy8dpeQxu3a8hRa49KVV2YaGaXKJjucCggA/exec";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzrhD1SJDaYBCYfiFwrHJ0cQDrN2DXiGue8QkOHbIvEQXHknn60vnv95Vqj8ZXW_4z9/exec";
 
 const CURSOS_DEF = [
   { id:"C01", nombre:"Métodos Matemáticos I", profesor:"Adriana Piazza", emailProf:"", sala:"P-309", dias:[1, 3], hora:"12:20 – 13:50", descripcion:"En este curso se estudian los primeros lineamientos matemáticos útiles para las asignaturas de la carrera, se estudia lógica y conjuntos, funciones, sumatoria y productoria. También la aplicación de técnicas que permiten el cálculo de estas materias.", cuposPorFecha:2 },
