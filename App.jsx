@@ -260,41 +260,15 @@ export default function App(){
   const doSubmit=async()=>{
     if(!validate()||!selF||!selC)return;
     setLimiteMsg("");
-    // Verificar límite de 3 inscripciones por mes
+    // Verificar límite con datos ya cargados
     if(form.rut){
       try{
         const rc=JSON.parse(localStorage.getItem("fen-rut-conteo")||"{}");
         const rutL=form.rut.replace(/[^0-9kK]/gi,"").toLowerCase();
         if(rc[rutL]&&rc[rutL]>=3){
-          setLimiteMsg("Ya alcanzaste el máximo de 3 inscripciones para este mes. ¡Vuelve el próximo mes para inscribirte a más clases!");
+          setLimiteMsg("Ya alcanzaste el máximo de 3 inscripciones para este mes. ¡Vuelve el próximo mes!");
           return;
         }
-      }catch(e){}
-    }
-    // Verificar que no se inscriba dos veces a la misma clase+fecha
-    if(form.rut&&selC&&selF){
-      try{
-        const url="https://docs.google.com/spreadsheets/d/"+SHEET_ID+"/gviz/tq?tqx=out:csv&sheet=Inscripciones";
-        const res=await fetch(url);
-        const csv=await res.text();
-        const rutL=form.rut.replace(/[^0-9kK]/gi,"").toLowerCase();
-        const rows=csv.split("\n").slice(1);
-        let duplicado=false,conteoMes=0;
-        const meses=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
-        const mesActual=meses[new Date().getMonth()];
-        rows.forEach(row=>{
-          if(!row.trim())return;
-          const cols=[];let cur="",inQ=false;
-          for(let i=0;i<row.length;i++){const c=row[i];if(c==='"'){inQ=!inQ}else if(c===","&&!inQ){cols.push(cur.trim().replace(/^"|"$/g,""));cur=""}else{cur+=c}}
-          cols.push(cur.trim().replace(/^"|"$/g,""));
-          if(cols[0]==="ANULADA")return;
-          const r=(cols[2]||"").replace(/[^0-9kK]/gi,"").toLowerCase();
-          if(r!==rutL)return;
-          if(cols[9]===selC.nombre&&cols[11]===selF.label)duplicado=true;
-          if((cols[11]||"").toLowerCase().includes(mesActual))conteoMes++;
-        });
-        if(duplicado){setLimiteMsg("Ya estás inscrito/a en esta clase para esta fecha.");return}
-        if(conteoMes>=3){setLimiteMsg("Ya alcanzaste el máximo de 3 inscripciones para este mes. ¡Vuelve el próximo mes!");return}
       }catch(e){}
     }
     const colegioFinal=form.colegio==="Otro"?form.colegioOtro:form.colegio;
@@ -310,7 +284,7 @@ export default function App(){
     // Enviar a Google Sheets + correos (si está configurado)
     if(APPS_SCRIPT_URL){
       try{
-        const payload={action:"inscripcion",inscId:ni.id,nombre:form.nombre,rut:form.rut,correo:form.correo,telefono:form.telefono,cursoEscolar:form.cursoEscolar,region:form.region,colegio:colegioFinal,carreraInteres:form.carreraInteres,cursoNombre:selC.nombre,cursoProfesor:selC.profesor,emailProf:selC.emailProf,fechaClase:selF.label,cursoHora:selC.hora,cursoSala:selC.sala};
+        const payload={action:"inscripcion",inscId:ni.id,nombre:form.nombre,rut:form.rut,correo:form.correo,telefono:form.telefono,cursoEscolar:form.cursoEscolar,region:form.region,colegio:colegioFinal,carreraInteres:form.carreraInteres,cursoNombre:selC.nombre,cursoProfesor:selC.profesor,emailProf:selC.emailProf,fechaClase:selF.label,cursoHora:selC.hora,cursoSala:selC.sala,justificativo:form.justificativo};
         fetch(APPS_SCRIPT_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(payload)}).catch(()=>{});
       }catch(e){}
     }
