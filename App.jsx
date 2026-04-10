@@ -19,7 +19,8 @@ const FECHAS_EXCLUIDAS = [];
 // GOOGLE APPS SCRIPT URL — Pegar aquí la URL del paso 9 de la guía
 // Dejar vacío ("") para modo demo sin conexión a Google
 // ============================================
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzrhD1SJDaYBCYfiFwrHJ0cQDrN2DXiGue8QkOHbIvEQXHknn60vnv95Vqj8ZXW_4z9/exec";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbypTB8zR8tEHTf-6hVbepHFAa0eFrJLaxf0YC7Kmeqs_ELFe-6DPXfzzSmeyTKRKgyd/exec";
+const SHEET_ID = "1v3RRsp_9psYzWaN2Gt3-UFx7hEamucCvZ10aLTJ4x_Y";
 
 const CURSOS_DEF = [
   { id:"C01", nombre:"Métodos Matemáticos I", profesor:"Adriana Piazza", emailProf:"", sala:"P-309", dias:[1, 3], hora:"12:20 – 13:50", descripcion:"En este curso se estudian los primeros lineamientos matemáticos útiles para las asignaturas de la carrera, se estudia lógica y conjuntos, funciones, sumatoria y productoria. También la aplicación de técnicas que permiten el cálculo de estas materias.", cuposPorFecha:2 },
@@ -189,37 +190,50 @@ export default function App(){
 
   useEffect(()=>{
     const init=async()=>{
-      // Load local data
       try{const r=localStorage.getItem(SK);if(r){const d=JSON.parse(r);if(d.i)setInsc(d.i);if(d.c)setCorreos(d.c)}}catch(e){}
-      // Fetch real cupos from Google Sheets
       const allDates=genAllDates();
-      if(APPS_SCRIPT_URL){
-        await new Promise((resolve)=>{
-          const cbName="_cuposCb"+Date.now();
-          const timer=setTimeout(()=>{delete window[cbName];resolve()},8000);
-          window[cbName]=function(data){
-            clearTimeout(timer);
-            try{
-              if(data&&data.success&&data.cupos){
-                Object.values(allDates).forEach(f=>{
-                  const curso=CURSOS_DEF.find(c=>c.id===f.cursoId);
-                  if(curso){
-                    const lookupKey=curso.nombre+"|||"+f.label;
-                    const used=data.cupos[lookupKey]||0;
-                    f.cuposDisponibles=Math.max(0,f.cuposTotal-used);
-                  }
-                });
-              }
-            }catch(e){}
-            delete window[cbName];
-            resolve();
-          };
-          const s=document.createElement("script");
-          s.src=APPS_SCRIPT_URL+"?action=cupos&callback="+cbName;
-          s.onerror=()=>{clearTimeout(timer);delete window[cbName];resolve()};
-          document.body.appendChild(s);
-          s.onload=()=>{try{document.body.removeChild(s)}catch(e){}};
-        });
+      // Leer inscripciones directamente desde Google Sheets (API pública)
+      if(SHEET_ID){
+        try{
+          const url="https://docs.google.com/spreadsheets/d/"+SHEET_ID+"/gviz/tq?tqx=out:csv&sheet=Inscripciones";
+          const res=await fetch(url);
+          const csv=await res.text();
+          const rows=csv.split("\n").slice(1);
+          const conteo={};
+          const rutConteo={};
+          rows.forEach(row=>{
+            if(!row.trim())return;
+            // Parse CSV (handle quoted fields)
+            const cols=[];let cur="",inQ=false;
+            for(let i=0;i<row.length;i++){const c=row[i];if(c==='"'){inQ=!inQ}else if(c===","&&!inQ){cols.push(cur.trim().replace(/^"|"$/g,""));cur=""}else{cur+=c}}
+            cols.push(cur.trim().replace(/^"|"$/g,""));
+            const estado=cols[0]||"";
+            const rut=cols[2]||"";
+            const cursoNombre=cols[9]||"";
+            const fechaClase=cols[11]||"";
+            if(estado==="ANULADA"||!cursoNombre||!fechaClase)return;
+            const key=cursoNombre+"|||"+fechaClase;
+            conteo[key]=(conteo[key]||0)+1;
+            // Contar por RUT para el mes actual
+            const meses=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+            const mesActual=meses[new Date().getMonth()];
+            if(fechaClase.toLowerCase().includes(mesActual)){
+              const rutL=(rut||"").replace(/[^0-9kK]/gi,"").toLowerCase();
+              if(rutL){rutConteo[rutL]=(rutConteo[rutL]||0)+1}
+            }
+          });
+          // Aplicar cupos reales
+          Object.values(allDates).forEach(f=>{
+            const curso=CURSOS_DEF.find(c=>c.id===f.cursoId);
+            if(curso){
+              const key=curso.nombre+"|||"+f.label;
+              const used=conteo[key]||0;
+              f.cuposDisponibles=Math.max(0,f.cuposTotal-used);
+            }
+          });
+          // Guardar conteo de RUTs para validación
+          try{localStorage.setItem("fen-rut-conteo",JSON.stringify(rutConteo))}catch(e){}
+        }catch(e){console.log("Error leyendo Sheet:",e)}
       }
       setFechas(allDates);
       setLoading(false);
@@ -247,21 +261,40 @@ export default function App(){
     if(!validate()||!selF||!selC)return;
     setLimiteMsg("");
     // Verificar límite de 3 inscripciones por mes
-    if(APPS_SCRIPT_URL&&form.rut){
+    if(form.rut){
       try{
-        const ok=await new Promise((resolve)=>{
-          const cb="_rutCb"+Date.now();
-          const t=setTimeout(()=>{delete window[cb];resolve(true)},5000);
-          window[cb]=function(d){clearTimeout(t);delete window[cb];
-            if(d&&d.count>=3){setLimiteMsg("Ya alcanzaste el máximo de 3 inscripciones para este mes. ¡Vuelve el próximo mes para inscribirte a más clases!");resolve(false)}
-            else resolve(true)};
-          const s=document.createElement("script");
-          s.src=APPS_SCRIPT_URL+"?action=checkRut&rut="+encodeURIComponent(form.rut)+"&callback="+cb;
-          s.onerror=()=>{clearTimeout(t);delete window[cb];resolve(true)};
-          document.body.appendChild(s);
-          s.onload=()=>{try{document.body.removeChild(s)}catch(e){}};
+        const rc=JSON.parse(localStorage.getItem("fen-rut-conteo")||"{}");
+        const rutL=form.rut.replace(/[^0-9kK]/gi,"").toLowerCase();
+        if(rc[rutL]&&rc[rutL]>=3){
+          setLimiteMsg("Ya alcanzaste el máximo de 3 inscripciones para este mes. ¡Vuelve el próximo mes para inscribirte a más clases!");
+          return;
+        }
+      }catch(e){}
+    }
+    // Verificar que no se inscriba dos veces a la misma clase+fecha
+    if(form.rut&&selC&&selF){
+      try{
+        const url="https://docs.google.com/spreadsheets/d/"+SHEET_ID+"/gviz/tq?tqx=out:csv&sheet=Inscripciones";
+        const res=await fetch(url);
+        const csv=await res.text();
+        const rutL=form.rut.replace(/[^0-9kK]/gi,"").toLowerCase();
+        const rows=csv.split("\n").slice(1);
+        let duplicado=false,conteoMes=0;
+        const meses=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+        const mesActual=meses[new Date().getMonth()];
+        rows.forEach(row=>{
+          if(!row.trim())return;
+          const cols=[];let cur="",inQ=false;
+          for(let i=0;i<row.length;i++){const c=row[i];if(c==='"'){inQ=!inQ}else if(c===","&&!inQ){cols.push(cur.trim().replace(/^"|"$/g,""));cur=""}else{cur+=c}}
+          cols.push(cur.trim().replace(/^"|"$/g,""));
+          if(cols[0]==="ANULADA")return;
+          const r=(cols[2]||"").replace(/[^0-9kK]/gi,"").toLowerCase();
+          if(r!==rutL)return;
+          if(cols[9]===selC.nombre&&cols[11]===selF.label)duplicado=true;
+          if((cols[11]||"").toLowerCase().includes(mesActual))conteoMes++;
         });
-        if(!ok)return;
+        if(duplicado){setLimiteMsg("Ya estás inscrito/a en esta clase para esta fecha.");return}
+        if(conteoMes>=3){setLimiteMsg("Ya alcanzaste el máximo de 3 inscripciones para este mes. ¡Vuelve el próximo mes!");return}
       }catch(e){}
     }
     const colegioFinal=form.colegio==="Otro"?form.colegioOtro:form.colegio;
