@@ -19,7 +19,7 @@ const FECHAS_EXCLUIDAS = [];
 // GOOGLE APPS SCRIPT URL — Pegar aquí la URL del paso 9 de la guía
 // Dejar vacío ("") para modo demo sin conexión a Google
 // ============================================
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwr75g2s5wHRLLOhrQscb_kDeCjP_jBv3AIT1_Yl0C4YqOLcZS3aaX8Gh_TyQ6jhM4/exec";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxQRC_cUs81aDbUCqx6USZITP6R1oPqN6cwy8dpeQxu3a8hRa49KVV2YaGaXKJjucCggA/exec";
 
 const CURSOS_DEF = [
   { id:"C01", nombre:"Métodos Matemáticos I", profesor:"Adriana Piazza", emailProf:"", sala:"P-309", dias:[1, 3], hora:"12:20 – 13:50", descripcion:"En este curso se estudian los primeros lineamientos matemáticos útiles para las asignaturas de la carrera, se estudia lógica y conjuntos, funciones, sumatoria y productoria. También la aplicación de técnicas que permiten el cálculo de estas materias.", cuposPorFecha:2 },
@@ -187,7 +187,35 @@ export default function App(){
   const cutoff=useMemo(()=>{const d=new Date(today);d.setDate(d.getDate()+DIAS_CORTE);return d},[today]);
   const pLabel="Otoño 2026";const mesLabel=MN[new Date().getMonth()].charAt(0).toUpperCase()+MN[new Date().getMonth()].slice(1)+" 2026";
 
-  useEffect(()=>{try{const r=localStorage.getItem(SK);if(r){const d=JSON.parse(r);if(d.f){const m=genAllDates();Object.keys(d.f).forEach(k=>{if(m[k])m[k].cuposDisponibles=d.f[k]});setFechas(m)}if(d.i)setInsc(d.i);if(d.c)setCorreos(d.c)}}catch(e){}setLoading(false)},[]);
+  useEffect(()=>{
+    const init=async()=>{
+      // Load local data
+      try{const r=localStorage.getItem(SK);if(r){const d=JSON.parse(r);if(d.i)setInsc(d.i);if(d.c)setCorreos(d.c)}}catch(e){}
+      // Fetch real cupos from Google Sheets
+      const allDates=genAllDates();
+      if(APPS_SCRIPT_URL){
+        try{
+          const res=await fetch(APPS_SCRIPT_URL+"?action=cupos");
+          const data=await res.json();
+          if(data.success&&data.cupos){
+            Object.values(allDates).forEach(f=>{
+              const key=f.key;
+              // Find matching inscription count
+              const curso=CURSOS_DEF.find(c=>c.id===f.cursoId);
+              if(curso){
+                const lookupKey=curso.nombre+"|||"+f.label;
+                const used=data.cupos[lookupKey]||0;
+                f.cuposDisponibles=Math.max(0,f.cuposTotal-used);
+              }
+            });
+          }
+        }catch(e){console.log("No se pudo conectar con Google Sheets, usando cupos locales")}
+      }
+      setFechas(allDates);
+      setLoading(false);
+    };
+    init();
+  },[]);
 
   const save=useCallback((f,i,c)=>{try{const cm={};Object.entries(f??fechas).forEach(([k,v])=>{cm[k]=v.cuposDisponibles});localStorage.setItem(SK,JSON.stringify({f:cm,i:i??insc,c:c??correos}))}catch(e){}},[fechas,insc,correos]);
 
