@@ -170,7 +170,7 @@ export default function App(){
   const [fDia,setFDia]=useState("Todos");
   const [loading,setLoading]=useState(true);
   const [form,setForm]=useState({nombre:"",rut:"",correo:"",telefono:"",cursoEscolar:"",colegio:"",colegioOtro:"",colSearch:"",colOpen:false,region:"",carreraInteres:"",justificativo:""});
-  const [err,setErr]=useState({});
+  const [err,setErr]=useState({});const [limiteMsg,setLimiteMsg]=useState("");
   const [adminAuth,setAdminAuth]=useState(false);
   const [adminPass,setAdminPass]=useState("");
   const [adminErr,setAdminErr]=useState(false);
@@ -194,22 +194,32 @@ export default function App(){
       // Fetch real cupos from Google Sheets
       const allDates=genAllDates();
       if(APPS_SCRIPT_URL){
-        try{
-          const res=await fetch(APPS_SCRIPT_URL+"?action=cupos");
-          const data=await res.json();
-          if(data.success&&data.cupos){
-            Object.values(allDates).forEach(f=>{
-              const key=f.key;
-              // Find matching inscription count
-              const curso=CURSOS_DEF.find(c=>c.id===f.cursoId);
-              if(curso){
-                const lookupKey=curso.nombre+"|||"+f.label;
-                const used=data.cupos[lookupKey]||0;
-                f.cuposDisponibles=Math.max(0,f.cuposTotal-used);
+        await new Promise((resolve)=>{
+          const cbName="_cuposCb"+Date.now();
+          const timer=setTimeout(()=>{delete window[cbName];resolve()},8000);
+          window[cbName]=function(data){
+            clearTimeout(timer);
+            try{
+              if(data&&data.success&&data.cupos){
+                Object.values(allDates).forEach(f=>{
+                  const curso=CURSOS_DEF.find(c=>c.id===f.cursoId);
+                  if(curso){
+                    const lookupKey=curso.nombre+"|||"+f.label;
+                    const used=data.cupos[lookupKey]||0;
+                    f.cuposDisponibles=Math.max(0,f.cuposTotal-used);
+                  }
+                });
               }
-            });
-          }
-        }catch(e){console.log("No se pudo conectar con Google Sheets, usando cupos locales")}
+            }catch(e){}
+            delete window[cbName];
+            resolve();
+          };
+          const s=document.createElement("script");
+          s.src=APPS_SCRIPT_URL+"?action=cupos&callback="+cbName;
+          s.onerror=()=>{clearTimeout(timer);delete window[cbName];resolve()};
+          document.body.appendChild(s);
+          s.onload=()=>{try{document.body.removeChild(s)}catch(e){}};
+        });
       }
       setFechas(allDates);
       setLoading(false);
@@ -235,6 +245,25 @@ export default function App(){
 
   const doSubmit=async()=>{
     if(!validate()||!selF||!selC)return;
+    setLimiteMsg("");
+    // Verificar límite de 3 inscripciones por mes
+    if(APPS_SCRIPT_URL&&form.rut){
+      try{
+        const ok=await new Promise((resolve)=>{
+          const cb="_rutCb"+Date.now();
+          const t=setTimeout(()=>{delete window[cb];resolve(true)},5000);
+          window[cb]=function(d){clearTimeout(t);delete window[cb];
+            if(d&&d.count>=3){setLimiteMsg("Ya alcanzaste el máximo de 3 inscripciones para este mes. ¡Vuelve el próximo mes para inscribirte a más clases!");resolve(false)}
+            else resolve(true)};
+          const s=document.createElement("script");
+          s.src=APPS_SCRIPT_URL+"?action=checkRut&rut="+encodeURIComponent(form.rut)+"&callback="+cb;
+          s.onerror=()=>{clearTimeout(t);delete window[cb];resolve(true)};
+          document.body.appendChild(s);
+          s.onload=()=>{try{document.body.removeChild(s)}catch(e){}};
+        });
+        if(!ok)return;
+      }catch(e){}
+    }
     const colegioFinal=form.colegio==="Otro"?form.colegioOtro:form.colegio;
     const ni={id:genId(),...form,colegio:colegioFinal,cursoId:selC.id,cursoNombre:selC.nombre,cursoProfesor:selC.profesor,cursoSala:selC.sala,cursoHora:selC.hora,fechaClase:selF.label,fechaKey:selF.key,fechaStr:selF.fechaStr,fecha:new Date().toISOString(),estado:"confirmada"};
     const nf={...fechas,[selF.key]:{...fechas[selF.key],cuposDisponibles:Math.max(0,fechas[selF.key].cuposDisponibles-1)}};
