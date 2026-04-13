@@ -158,6 +158,8 @@ const DescToggle=({text})=>{
   </div>);
 };
 
+const validarRut=(rut)=>{if(!rut)return false;const clean=rut.replace(/[^0-9kK]/g,"");if(clean.length<7||clean.length>9)return false;const body=clean.slice(0,-1);const dv=clean.slice(-1).toLowerCase();let sum=0;let mul=2;for(let i=body.length-1;i>=0;i--){sum+=parseInt(body[i])*mul;mul=mul===7?2:mul+1}const expected=11-(sum%11);const dvExpected=expected===11?"0":expected===10?"k":String(expected);return dv===dvExpected};
+
 export default function App(){
   const [view,setView]=useState("home");
   const [selC,setSelC]=useState(null);
@@ -240,7 +242,7 @@ export default function App(){
   const mesActual=useMemo(()=>new Date().getMonth(),[]);const anioActual=useMemo(()=>new Date().getFullYear(),[]);const totalC=useMemo(()=>Object.values(fechas).filter(f=>f.fecha>=cutoff&&f.cuposDisponibles>0&&f.fecha.getMonth()===mesActual&&f.fecha.getFullYear()===anioActual).reduce((s,f)=>s+f.cuposDisponibles,0),[fechas,cutoff,mesActual,anioActual]);
 
   const uForm=(k,v)=>{if(k==="rut")v=formatRut(v);if(k==="telefono")v=v.replace(/[^0-9+]/g,"").slice(0,12);setForm(p=>{const nf={...p,[k]:v};if(k==="region"){nf.colegio="";nf.colSearch="";nf.colOpen=false;nf.colegioOtro=""}return nf});if(err[k])setErr(p=>({...p,[k]:null}))};
-  const validate=()=>{const e={};const n=form.nombre||"";const r=form.rut||"";const c=form.correo||"";const t=form.telefono||"";if(!n.trim())e.nombre="Requerido";if(!r||r.length<8)e.rut="RUT inválido";if(!c||!c.includes("@")||!c.includes("."))e.correo="Correo inválido";if(!t||t.length<8)e.telefono="Teléfono inválido";if(!form.cursoEscolar)e.cursoEscolar="Requerido";if(!form.colegio)e.colegio="Requerido";if(form.colegio==="Otro"&&!(form.colegioOtro||"").trim())e.colegio="Escribe el nombre de tu colegio";if(!form.region)e.region="Requerido";if(!form.carreraInteres)e.carreraInteres="Requerido";if(!form.justificativo)e.justificativo="Requerido";setErr(e);return!Object.keys(e).length};
+  const validate=()=>{const e={};const n=form.nombre||"";const r=form.rut||"";const c=form.correo||"";const t=form.telefono||"";if(!n.trim())e.nombre="Requerido";if(!r||!validarRut(r))e.rut="RUT inválido. Verifica que esté correcto";if(!c||!c.includes("@")||!c.includes("."))e.correo="Correo inválido";if(!t||t.length<8)e.telefono="Teléfono inválido";if(!form.cursoEscolar)e.cursoEscolar="Requerido";if(!form.colegio)e.colegio="Requerido";if(form.colegio==="Otro"&&!(form.colegioOtro||"").trim())e.colegio="Escribe el nombre de tu colegio";if(!form.region)e.region="Requerido";if(!form.carreraInteres)e.carreraInteres="Requerido";if(!form.justificativo)e.justificativo="Requerido";setErr(e);return!Object.keys(e).length};
 
   const doSubmit=async()=>{
     try{
