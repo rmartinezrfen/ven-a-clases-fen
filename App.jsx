@@ -325,7 +325,7 @@ export default function App(){
               <div style={{padding:"18px 22px 22px"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
                   <span style={{padding:"3px 10px",borderRadius:5,fontSize:11,fontWeight:700,background:B.blue+"12",color:B.blue}}>{c.dias.map(d=>DN[d]).join(" y ")}</span>
-                  <span style={{padding:"3px 10px",borderRadius:5,fontSize:11,fontWeight:700,background:(no||sinCupos)?B.redBg:B.greenBg,color:(no||sinCupos)?B.red:B.green}}>{no?"Sin fechas":(td>0?td+" cupos":"Sin cupos")}</span>
+                  <span style={{padding:"3px 10px",borderRadius:5,fontSize:11,fontWeight:700,background:(no||sinCupos)?B.redBg:B.greenBg,color:(no||sinCupos)?B.red:B.green}}>{no?"Sin fechas":(td>0?c.cuposPorFecha+" cupos/clase":"Sin cupos")}</span>
                 </div>
                 <h3 style={{fontSize:16,fontWeight:700,margin:"0 0 6px"}}>{c.nombre}</h3>{c.descripcion&&<DescToggle text={c.descripcion}/>}
                 
