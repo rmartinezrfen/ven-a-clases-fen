@@ -230,7 +230,7 @@ export default function App(){
 
   const save=useCallback((f,i,c)=>{try{const cm={};Object.entries(f??fechas).forEach(([k,v])=>{cm[k]=v.cuposDisponibles});localStorage.setItem(SK,JSON.stringify({f:cm,i:i??insc,c:c??correos}))}catch(e){}},[fechas,insc,correos]);
 
-  const nav=v=>{setView(v);if(v!=="inscripcion")setSelF(null);if(v==="inscripcion"){try{const saved=localStorage.getItem("fen-estudiante");if(saved&&!form.nombre){const d=JSON.parse(saved);const safe={};Object.keys(d).forEach(k=>{safe[k]=d[k]||""});setForm(p=>({...p,...safe,colOpen:false}))}}catch(e){}}};
+  const nav=v=>{setLimiteMsg("");setView(v);if(v!=="inscripcion")setSelF(null);if(v==="inscripcion"){try{const saved=localStorage.getItem("fen-estudiante");if(saved&&!form.nombre){const d=JSON.parse(saved);const safe={};Object.keys(d).forEach(k=>{safe[k]=d[k]||""});setForm(p=>({...p,...safe,colOpen:false}))}}catch(e){}}};
 
   const doAdminLogin=()=>{
     if(adminPass===ADMIN_PASS){setAdminAuth(true);setAdminErr(false);setAdminPass("");setView("admin");setATab("inscritos");window.location.hash=""}
