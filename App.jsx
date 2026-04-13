@@ -188,52 +188,37 @@ export default function App(){
   const cutoff=useMemo(()=>{const d=new Date(today);d.setDate(d.getDate()+DIAS_CORTE);return d},[today]);
   const pLabel="Otoño 2026";const mesLabel=MN[new Date().getMonth()].charAt(0).toUpperCase()+MN[new Date().getMonth()].slice(1)+" 2026";
 
+  // Helper: llamar Apps Script via JSONP (evita problemas de CORS)
+  const jsonpCall=(params)=>new Promise((resolve)=>{
+    const cb="_cb"+Date.now()+Math.random().toString(36).slice(2,6);
+    const timer=setTimeout(()=>{try{delete window[cb]}catch(e){}resolve(null)},6000);
+    window[cb]=function(data){clearTimeout(timer);try{delete window[cb]}catch(e){}resolve(data)};
+    const s=document.createElement("script");
+    s.src=APPS_SCRIPT_URL+"?"+params+"&callback="+cb;
+    s.onerror=()=>{clearTimeout(timer);try{delete window[cb]}catch(e){}resolve(null)};
+    document.head.appendChild(s);
+    s.onload=()=>{try{document.head.removeChild(s)}catch(e){}};
+  });
+
   useEffect(()=>{
     const init=async()=>{
       try{const r=localStorage.getItem(SK);if(r){const d=JSON.parse(r);if(d.i)setInsc(d.i);if(d.c)setCorreos(d.c)}}catch(e){}
       const allDates=genAllDates();
-      // Leer inscripciones directamente desde Google Sheets (API pública)
-      if(SHEET_ID){
+      // Leer cupos reales desde Google Sheets via Apps Script
+      if(APPS_SCRIPT_URL){
         try{
-          const url="https://docs.google.com/spreadsheets/d/"+SHEET_ID+"/gviz/tq?tqx=out:csv&sheet=Inscripciones";
-          const res=await fetch(url);
-          const csv=await res.text();
-          const rows=csv.split("\n").slice(1);
-          const conteo={};
-          const rutConteo={};
-          rows.forEach(row=>{
-            if(!row.trim())return;
-            // Parse CSV (handle quoted fields)
-            const cols=[];let cur="",inQ=false;
-            for(let i=0;i<row.length;i++){const c=row[i];if(c==='"'){inQ=!inQ}else if(c===","&&!inQ){cols.push(cur.trim().replace(/^"|"$/g,""));cur=""}else{cur+=c}}
-            cols.push(cur.trim().replace(/^"|"$/g,""));
-            const estado=cols[0]||"";
-            const rut=cols[2]||"";
-            const cursoNombre=cols[9]||"";
-            const fechaClase=cols[11]||"";
-            if(estado==="ANULADA"||!cursoNombre||!fechaClase)return;
-            const key=cursoNombre+"|||"+fechaClase;
-            conteo[key]=(conteo[key]||0)+1;
-            // Contar por RUT para el mes actual
-            const meses=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
-            const mesActual=meses[new Date().getMonth()];
-            if(fechaClase.toLowerCase().includes(mesActual)){
-              const rutL=(rut||"").replace(/[^0-9kK]/gi,"").toLowerCase();
-              if(rutL){rutConteo[rutL]=(rutConteo[rutL]||0)+1}
-            }
-          });
-          // Aplicar cupos reales
-          Object.values(allDates).forEach(f=>{
-            const curso=CURSOS_DEF.find(c=>c.id===f.cursoId);
-            if(curso){
-              const key=curso.nombre+"|||"+f.label;
-              const used=conteo[key]||0;
-              f.cuposDisponibles=Math.max(0,f.cuposTotal-used);
-            }
-          });
-          // Guardar conteo de RUTs para validación
-          try{localStorage.setItem("fen-rut-conteo",JSON.stringify(rutConteo))}catch(e){}
-        }catch(e){console.log("Error leyendo Sheet:",e)}
+          const data=await jsonpCall("action=cupos");
+          if(data&&data.success&&data.cupos){
+            Object.values(allDates).forEach(f=>{
+              const curso=CURSOS_DEF.find(c=>c.id===f.cursoId);
+              if(curso){
+                const key=curso.nombre+"|||"+f.label;
+                const used=data.cupos[key]||0;
+                f.cuposDisponibles=Math.max(0,f.cuposTotal-used);
+              }
+            });
+          }
+        }catch(e){}
       }
       setFechas(allDates);
       setLoading(false);
@@ -257,19 +242,24 @@ export default function App(){
   const uForm=(k,v)=>{if(k==="rut")v=formatRut(v);if(k==="telefono")v=v.replace(/[^0-9+]/g,"").slice(0,12);setForm(p=>{const nf={...p,[k]:v};if(k==="region"){nf.colegio="";nf.colSearch="";nf.colOpen=false;nf.colegioOtro=""}return nf});if(err[k])setErr(p=>({...p,[k]:null}))};
   const validate=()=>{const e={};const n=form.nombre||"";const r=form.rut||"";const c=form.correo||"";const t=form.telefono||"";if(!n.trim())e.nombre="Requerido";if(!r||r.length<8)e.rut="RUT inválido";if(!c||!c.includes("@")||!c.includes("."))e.correo="Correo inválido";if(!t||t.length<8)e.telefono="Teléfono inválido";if(!form.cursoEscolar)e.cursoEscolar="Requerido";if(!form.colegio)e.colegio="Requerido";if(form.colegio==="Otro"&&!(form.colegioOtro||"").trim())e.colegio="Escribe el nombre de tu colegio";if(!form.region)e.region="Requerido";if(!form.carreraInteres)e.carreraInteres="Requerido";if(!form.justificativo)e.justificativo="Requerido";setErr(e);return!Object.keys(e).length};
 
-  const doSubmit=()=>{
-    console.log("SUBMIT CLICKED",{selF:!!selF,selC:!!selC,form});
+  const doSubmit=async()=>{
     try{
-    if(!validate()){console.log("VALIDATION FAILED",err);return}
-    if(!selF||!selC){console.log("NO SELF/SELC");return}
+    if(!validate())return;
+    if(!selF||!selC)return;
     setLimiteMsg("");
-    if(form.rut){
+    // Verificar RUT via Apps Script: duplicados + máximo 3 por mes
+    if(APPS_SCRIPT_URL&&form.rut){
       try{
-        const rc=JSON.parse(localStorage.getItem("fen-rut-conteo")||"{}");
-        const rutL=(form.rut||"").replace(/[^0-9kK]/gi,"").toLowerCase();
-        if(rc[rutL]&&rc[rutL]>=3){
-          setLimiteMsg("Ya alcanzaste el máximo de 3 inscripciones para este mes. ¡Vuelve el próximo mes!");
-          return;
+        const rutData=await jsonpCall("action=checkRut&rut="+encodeURIComponent(form.rut));
+        if(rutData){
+          if(rutData.count>=3){
+            setLimiteMsg("Ya alcanzaste el máximo de 3 inscripciones para este mes. ¡Vuelve el próximo mes para inscribirte a más clases!");
+            return;
+          }
+          if(rutData.inscripciones&&rutData.inscripciones.some(ins=>ins.curso===selC.nombre&&ins.fecha===selF.label)){
+            setLimiteMsg("Ya estás inscrito/a en esta clase para esta fecha.");
+            return;
+          }
         }
       }catch(e){}
     }
@@ -289,7 +279,7 @@ export default function App(){
       }catch(e){}
     }
     try{localStorage.setItem("fen-estudiante",JSON.stringify({nombre:form.nombre||"",rut:form.rut||"",correo:form.correo||"",telefono:form.telefono||"",cursoEscolar:form.cursoEscolar||"",region:form.region||"",colegio:form.colegio||"",colegioOtro:form.colegioOtro||"",colSearch:form.colSearch||"",carreraInteres:form.carreraInteres||"",justificativo:form.justificativo||""}))}catch(e){}
-    setForm({nombre:"",rut:"",correo:"",telefono:"",cursoEscolar:"",colegio:"",colegioOtro:"",colSearch:"",colOpen:false,region:"",carreraInteres:"",justificativo:""});console.log("INSCRIPCION OK");setView("confirmacion");
+    setForm({nombre:"",rut:"",correo:"",telefono:"",cursoEscolar:"",colegio:"",colegioOtro:"",colSearch:"",colOpen:false,region:"",carreraInteres:"",justificativo:""});setView("confirmacion");
     }catch(err){alert("Error: "+err.message);console.error(err)}
   };
 
@@ -439,6 +429,7 @@ export default function App(){
               {err.justificativo&&<span style={{fontSize:11,color:B.red,fontWeight:500}}>{err.justificativo}</span>}
             </div>
           </div>
+          {limiteMsg&&<div style={{background:"#FEF2F2",border:"1px solid #FECACA",borderRadius:8,padding:"12px 16px",marginBottom:12}}><p style={{margin:0,fontSize:13,color:"#991B1B",fontWeight:600}}>{limiteMsg}</p></div>}
           <button onClick={doSubmit} style={{marginTop:24,width:"100%",padding:"13px",background:B.blue,color:"#fff",border:"none",borderRadius:8,fontSize:15,fontWeight:700}}>Confirmar inscripción</button>
         </div>
       </div>)}
