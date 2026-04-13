@@ -243,7 +243,7 @@ export default function App(){
 
   const save=useCallback((f,i,c)=>{try{const cm={};Object.entries(f??fechas).forEach(([k,v])=>{cm[k]=v.cuposDisponibles});localStorage.setItem(SK,JSON.stringify({f:cm,i:i??insc,c:c??correos}))}catch(e){}},[fechas,insc,correos]);
 
-  const nav=v=>{setView(v);if(v!=="inscripcion")setSelF(null);if(v==="inscripcion"){try{const saved=localStorage.getItem("fen-estudiante");if(saved&&!form.nombre){const d=JSON.parse(saved);setForm(p=>({...p,...d,colOpen:false}))}}catch(e){}}};
+  const nav=v=>{setView(v);if(v!=="inscripcion")setSelF(null);if(v==="inscripcion"){try{const saved=localStorage.getItem("fen-estudiante");if(saved&&!form.nombre){const d=JSON.parse(saved);const safe={};Object.keys(d).forEach(k=>{safe[k]=d[k]||""});setForm(p=>({...p,...safe,colOpen:false}))}}catch(e){}}};
 
   const doAdminLogin=()=>{
     if(adminPass===ADMIN_PASS){setAdminAuth(true);setAdminErr(false);setAdminPass("");setView("admin");setATab("inscritos");window.location.hash=""}
@@ -255,42 +255,42 @@ export default function App(){
   const mesActual=useMemo(()=>new Date().getMonth(),[]);const anioActual=useMemo(()=>new Date().getFullYear(),[]);const totalC=useMemo(()=>Object.values(fechas).filter(f=>f.fecha>=cutoff&&f.cuposDisponibles>0&&f.fecha.getMonth()===mesActual&&f.fecha.getFullYear()===anioActual).reduce((s,f)=>s+f.cuposDisponibles,0),[fechas,cutoff,mesActual,anioActual]);
 
   const uForm=(k,v)=>{if(k==="rut")v=formatRut(v);if(k==="telefono")v=v.replace(/[^0-9+]/g,"").slice(0,12);setForm(p=>{const nf={...p,[k]:v};if(k==="region"){nf.colegio="";nf.colSearch="";nf.colOpen=false;nf.colegioOtro=""}return nf});if(err[k])setErr(p=>({...p,[k]:null}))};
-  const validate=()=>{const e={};if(!form.nombre.trim())e.nombre="Requerido";if(!form.rut||form.rut.length<8)e.rut="RUT inválido";if(!form.correo.includes("@")||!form.correo.includes("."))e.correo="Correo inválido";if(!form.telefono||form.telefono.length<8)e.telefono="Teléfono inválido";if(!form.cursoEscolar)e.cursoEscolar="Requerido";if(!form.colegio)e.colegio="Requerido";if(form.colegio==="Otro"&&!form.colegioOtro?.trim())e.colegio="Escribe el nombre de tu colegio";if(!form.region)e.region="Requerido";if(!form.carreraInteres)e.carreraInteres="Requerido";if(!form.justificativo)e.justificativo="Requerido";setErr(e);return!Object.keys(e).length};
+  const validate=()=>{const e={};const n=form.nombre||"";const r=form.rut||"";const c=form.correo||"";const t=form.telefono||"";if(!n.trim())e.nombre="Requerido";if(!r||r.length<8)e.rut="RUT inválido";if(!c||!c.includes("@")||!c.includes("."))e.correo="Correo inválido";if(!t||t.length<8)e.telefono="Teléfono inválido";if(!form.cursoEscolar)e.cursoEscolar="Requerido";if(!form.colegio)e.colegio="Requerido";if(form.colegio==="Otro"&&!(form.colegioOtro||"").trim())e.colegio="Escribe el nombre de tu colegio";if(!form.region)e.region="Requerido";if(!form.carreraInteres)e.carreraInteres="Requerido";if(!form.justificativo)e.justificativo="Requerido";setErr(e);return!Object.keys(e).length};
 
-  const doSubmit=async()=>{
-    if(!validate()||!selF||!selC)return;
+  const doSubmit=()=>{
+    console.log("SUBMIT CLICKED",{selF:!!selF,selC:!!selC,form});
+    try{
+    if(!validate()){console.log("VALIDATION FAILED",err);return}
+    if(!selF||!selC){console.log("NO SELF/SELC");return}
     setLimiteMsg("");
-    // Verificar límite con datos ya cargados
     if(form.rut){
       try{
         const rc=JSON.parse(localStorage.getItem("fen-rut-conteo")||"{}");
-        const rutL=form.rut.replace(/[^0-9kK]/gi,"").toLowerCase();
+        const rutL=(form.rut||"").replace(/[^0-9kK]/gi,"").toLowerCase();
         if(rc[rutL]&&rc[rutL]>=3){
           setLimiteMsg("Ya alcanzaste el máximo de 3 inscripciones para este mes. ¡Vuelve el próximo mes!");
           return;
         }
       }catch(e){}
     }
-    const colegioFinal=form.colegio==="Otro"?form.colegioOtro:form.colegio;
-    const ni={id:genId(),...form,colegio:colegioFinal,cursoId:selC.id,cursoNombre:selC.nombre,cursoProfesor:selC.profesor,cursoSala:selC.sala,cursoHora:selC.hora,fechaClase:selF.label,fechaKey:selF.key,fechaStr:selF.fechaStr,fecha:new Date().toISOString(),estado:"confirmada"};
-    const nf={...fechas,[selF.key]:{...fechas[selF.key],cuposDisponibles:Math.max(0,fechas[selF.key].cuposDisponibles-1)}};
+    const colegioFinal=form.colegio==="Otro"?(form.colegioOtro||""):form.colegio;
+    const ni={id:genId(),...form,colegio:colegioFinal,cursoId:selC.id,cursoNombre:selC.nombre,cursoProfesor:selC.profesor,cursoSala:selC.sala,cursoHora:selC.hora,fechaClase:selF.label,fechaKey:selF.key,fechaStr:selF.fechaStr||"",fecha:new Date().toISOString(),estado:"confirmada"};
+    const nf={...fechas,[selF.key]:{...fechas[selF.key],cuposDisponibles:Math.max(0,(fechas[selF.key]||{cuposDisponibles:0}).cuposDisponibles-1)}};
     const nInsc=[...insc,ni];
-    const cnt=nInsc.filter(i=>i.fechaKey===selF.key).length;
     const nc=[...correos,
       {id:genId(),tipo:"confirmacion",para:form.correo,nombre:form.nombre,asunto:"Confirmación: "+selC.nombre+" — "+selF.label,curso:selC.nombre,fechaClase:selF.label,hora:selC.hora,sala:selC.sala,fecha:new Date().toISOString(),estado:"enviado"},
       {id:genId(),tipo:"recordatorio",para:form.correo,nombre:form.nombre,asunto:"Recordatorio: "+selC.nombre+" — "+selF.label,curso:selC.nombre,fechaClase:selF.label,hora:selC.hora,sala:selC.sala,fecha:new Date().toISOString(),estado:"programado"}
     ];
     setFechas(nf);setInsc(nInsc);setCorreos(nc);setLastI(ni);save(nf,nInsc,nc);
-    // Enviar a Google Sheets + correos (si está configurado)
     if(APPS_SCRIPT_URL){
       try{
-        const payload={action:"inscripcion",inscId:ni.id,nombre:form.nombre,rut:form.rut,correo:form.correo,telefono:form.telefono,cursoEscolar:form.cursoEscolar,region:form.region,colegio:colegioFinal,carreraInteres:form.carreraInteres,cursoNombre:selC.nombre,cursoProfesor:selC.profesor,emailProf:selC.emailProf,fechaClase:selF.label,cursoHora:selC.hora,cursoSala:selC.sala,justificativo:form.justificativo};
+        const payload={action:"inscripcion",inscId:ni.id,nombre:form.nombre||"",rut:form.rut||"",correo:form.correo||"",telefono:form.telefono||"",cursoEscolar:form.cursoEscolar||"",region:form.region||"",colegio:colegioFinal,carreraInteres:form.carreraInteres||"",cursoNombre:selC.nombre,cursoProfesor:selC.profesor,emailProf:selC.emailProf||"",fechaClase:selF.label,cursoHora:selC.hora,cursoSala:selC.sala,justificativo:form.justificativo||""};
         fetch(APPS_SCRIPT_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(payload)}).catch(()=>{});
       }catch(e){}
     }
-    // Guardar datos del estudiante para autocompletar en próximas inscripciones
-    try{localStorage.setItem("fen-estudiante",JSON.stringify({nombre:form.nombre,rut:form.rut,correo:form.correo,telefono:form.telefono,cursoEscolar:form.cursoEscolar,region:form.region,colegio:form.colegio,colegioOtro:form.colegioOtro,colSearch:form.colSearch,carreraInteres:form.carreraInteres,justificativo:form.justificativo}))}catch(e){}
-    setForm({nombre:"",rut:"",correo:"",telefono:"",cursoEscolar:"",colegio:"",colegioOtro:"",colSearch:"",colOpen:false,region:"",carreraInteres:"",justificativo:""});setView("confirmacion");
+    try{localStorage.setItem("fen-estudiante",JSON.stringify({nombre:form.nombre||"",rut:form.rut||"",correo:form.correo||"",telefono:form.telefono||"",cursoEscolar:form.cursoEscolar||"",region:form.region||"",colegio:form.colegio||"",colegioOtro:form.colegioOtro||"",colSearch:form.colSearch||"",carreraInteres:form.carreraInteres||"",justificativo:form.justificativo||""}))}catch(e){}
+    setForm({nombre:"",rut:"",correo:"",telefono:"",cursoEscolar:"",colegio:"",colegioOtro:"",colSearch:"",colOpen:false,region:"",carreraInteres:"",justificativo:""});console.log("INSCRIPCION OK");setView("confirmacion");
+    }catch(err){alert("Error: "+err.message);console.error(err)}
   };
 
   const doDel=async id=>{const item=insc.find(i=>i.id===id);if(!item)return;const nf=item.fechaKey&&fechas[item.fechaKey]?{...fechas,[item.fechaKey]:{...fechas[item.fechaKey],cuposDisponibles:Math.min(fechas[item.fechaKey].cuposTotal,fechas[item.fechaKey].cuposDisponibles+1)}}:fechas;const ni=insc.filter(i=>i.id!==id);setFechas(nf);setInsc(ni);save(nf,ni,null)};
