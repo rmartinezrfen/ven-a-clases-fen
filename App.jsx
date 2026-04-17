@@ -203,10 +203,10 @@ export default function App(){
     const init=async()=>{
       try{const r=localStorage.getItem(SK);if(r){const d=JSON.parse(r);if(d.i)setInsc(d.i);if(d.c)setCorreos(d.c)}}catch(e){}
       const allDates=genAllDates();
-      // Leer cupos reales desde Google Sheets via Apps Script
       if(APPS_SCRIPT_URL){
         try{
-          const data=await jsonpCall("action=cupos");
+          const res=await fetch(APPS_SCRIPT_URL+"?action=cupos");
+          const data=await res.json();
           if(data&&data.success&&data.cupos){
             Object.values(allDates).forEach(f=>{
               const curso=CURSOS_DEF.find(c=>c.id===f.cursoId);
@@ -249,7 +249,8 @@ export default function App(){
     // Verificar RUT via Apps Script: duplicados + máximo 3 por mes
     if(APPS_SCRIPT_URL&&form.rut){
       try{
-        const rutData=await jsonpCall("action=checkRut&rut="+encodeURIComponent(form.rut));
+        const res=await fetch(APPS_SCRIPT_URL+"?action=checkRut&rut="+encodeURIComponent(form.rut));
+        const rutData=await res.json();
         if(rutData){
           if(rutData.count>=3){
             setLimiteMsg("Ya alcanzaste el máximo de 3 inscripciones para este mes. ¡Vuelve el próximo mes para inscribirte a más clases!");
