@@ -428,6 +428,7 @@ export default function App(){
               {err.justificativo&&<span style={{fontSize:11,color:B.red,fontWeight:500}}>{err.justificativo}</span>}
             </div>
           </div>
+          <div style={{marginTop:16,background:"#F0F4FF",border:"1px solid #D8DDE8",borderRadius:8,padding:"12px 16px"}}><p style={{margin:0,fontSize:12,color:B.g700,lineHeight:1.5}}>Al inscribirte, autorizas a la Facultad de Economía y Negocios de la Universidad de Chile a utilizar tus datos para contactarte y enviarte información sobre carreras, actividades y procesos de admisión.</p></div>
           {limiteMsg&&<div style={{background:"#FEF2F2",border:"1px solid #FECACA",borderRadius:8,padding:"12px 16px",marginBottom:12}}><p style={{margin:0,fontSize:13,color:"#991B1B",fontWeight:600}}>{limiteMsg}</p></div>}
           <button onClick={doSubmit} style={{marginTop:24,width:"100%",padding:"13px",background:B.blue,color:"#fff",border:"none",borderRadius:8,fontSize:15,fontWeight:700}}>Confirmar inscripción</button>
         </div>
