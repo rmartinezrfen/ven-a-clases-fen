@@ -260,6 +260,21 @@ export default function App(){
             setLimiteMsg("Ya estás inscrito/a en esta clase para esta fecha.");
             return;
           }
+          if(rutData.inscripciones){
+            const conflicto=rutData.inscripciones.find(ins=>ins.fecha===selF.label&&ins.hora===selC.hora&&ins.curso!==selC.nombre);
+            if(conflicto){
+              setLimiteMsg("Ya estás inscrito/a en \""+conflicto.curso+"\" a la misma hora. Elige otro horario o fecha.");
+              return;
+            }
+          }
+          if(rutData.inscripciones&&rutData.inscripciones.some(ins=>{
+            if(ins.fecha!==selF.label)return false;
+            const cursoIns=CURSOS_DEF.find(c=>c.nombre===ins.curso);
+            return cursoIns&&cursoIns.hora===selC.hora;
+          })){
+            setLimiteMsg("Ya tienes otra clase inscrita en este mismo horario ("+selF.label+", "+selC.hora+").");
+            return;
+          }
         }
       }catch(e){}
     }
