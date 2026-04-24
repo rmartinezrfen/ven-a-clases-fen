@@ -234,7 +234,7 @@ export default function App(){
     else{setAdminErr(true)}
   };
   const doAdminLogout=()=>{setAdminAuth(false);setView("home");window.location.hash=""};
-  const gF=(cid)=>{const now=new Date();const cm=now.getMonth();const cy=now.getFullYear();return Object.values(fechas).filter(f=>f.cursoId===cid&&f.fecha>=cutoff&&f.fecha.getMonth()===cm&&f.fecha.getFullYear()===cy).sort((a,b)=>a.fecha-b.fecha)};
+  const gF=(cid)=>{const sm=SEMANA_INICIO.getMonth();const sy=SEMANA_INICIO.getFullYear();return Object.values(fechas).filter(f=>f.cursoId===cid&&f.fecha>=cutoff&&f.fecha.getMonth()===sm&&f.fecha.getFullYear()===sy).sort((a,b)=>a.fecha-b.fecha)};
   const gFA=(cid)=>Object.values(fechas).filter(f=>f.cursoId===cid&&f.fecha>=today).sort((a,b)=>a.fecha-b.fecha);
   const mesActual=useMemo(()=>new Date().getMonth(),[]);const anioActual=useMemo(()=>new Date().getFullYear(),[]);const totalC=useMemo(()=>Object.values(fechas).filter(f=>f.fecha>=cutoff&&f.cuposDisponibles>0&&f.fecha.getMonth()===mesActual&&f.fecha.getFullYear()===anioActual).reduce((s,f)=>s+f.cuposDisponibles,0),[fechas,cutoff,mesActual,anioActual]);
 
