@@ -13,7 +13,7 @@ const DIAS_CORTE = 2;
 const ADMIN_PASS = "fenuchile2026"; // Contraseña del admin — cámbiala cuando publiques
 
 // Fechas excluidas (feriados, recesos, etc.) — formato "YYYY-MM-DD"
-const FECHAS_EXCLUIDAS = ["2026-05-27"]; // 27 mayo reservado para colegio
+const FECHAS_EXCLUIDAS = ["2026-05-21","2026-05-27"]; // 21 mayo feriado, 27 mayo reservado colegio
 
 // ============================================
 // GOOGLE APPS SCRIPT URL — Pegar aquí la URL del paso 9 de la guía
