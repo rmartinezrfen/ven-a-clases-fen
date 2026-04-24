@@ -6,9 +6,9 @@ const B = {
   green:"#0D9255", greenBg:"#E6F7EE", red:"#D93025", redBg:"#FDE8E7", yellowBg:"#FEF6E0",
 };
 
-const SEMANA_INICIO = new Date(2026, 2, 16); // Lunes 16 marzo 2026
+const SEMANA_INICIO = new Date(2026, 4, 11); // Lunes 11 mayo 2026
 const SEMESTRE_FIN = new Date(2026, 6, 10); // Viernes 10 julio 2026
-const NUM_SEMANAS = 17; // Semestre completo Otoño 2026
+const NUM_SEMANAS = 9; // Mayo 11 a Julio 10
 const DIAS_CORTE = 2;
 const ADMIN_PASS = "fenuchile2026"; // Contraseña del admin — cámbiala cuando publiques
 
@@ -185,7 +185,7 @@ export default function App(){
 
   const today=useMemo(()=>{const d=new Date();d.setHours(0,0,0,0);return d},[]);
   const cutoff=useMemo(()=>{const d=new Date(today);d.setDate(d.getDate()+DIAS_CORTE);return d},[today]);
-  const pLabel="Otoño 2026";const mesLabel=MN[new Date().getMonth()].charAt(0).toUpperCase()+MN[new Date().getMonth()].slice(1)+" 2026";
+  const pLabel="Otoño 2026";const mesLabel="Mayo 2026";
 
   // Helper: llamar Apps Script via JSONP (evita problemas de CORS)
   const jsonpCall=(params)=>new Promise((resolve)=>{
