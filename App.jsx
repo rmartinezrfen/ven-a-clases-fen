@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 
 const B = {
   blue:"#1A3D8F", blueDk:"#0F2A6B", blueLt:"#2B5FD9", bluePale:"#E8EDF7", blueAcc:"#3A7BFF",
@@ -170,7 +170,7 @@ export default function App(){
   const [fDia,setFDia]=useState("Todos");
   const [loading,setLoading]=useState(true);
   const [form,setForm]=useState({nombre:"",rut:"",correo:"",telefono:"",cursoEscolar:"",colegio:"",colegioOtro:"",colSearch:"",colOpen:false,region:"",carreraInteres:"",justificativo:""});
-  const [err,setErr]=useState({});const [limiteMsg,setLimiteMsg]=useState("");
+  const [err,setErr]=useState({});const [limiteMsg,setLimiteMsg]=useState("");const [submitting,setSubmitting]=useState(false);const subRef=useRef(false);
   const [adminAuth,setAdminAuth]=useState(false);
   const [adminPass,setAdminPass]=useState("");
   const [adminErr,setAdminErr]=useState(false);
@@ -227,7 +227,7 @@ export default function App(){
 
   const save=useCallback((f,i,c)=>{try{const cm={};Object.entries(f??fechas).forEach(([k,v])=>{cm[k]=v.cuposDisponibles});localStorage.setItem(SK,JSON.stringify({f:cm,i:i??insc,c:c??correos}))}catch(e){}},[fechas,insc,correos]);
 
-  const nav=v=>{setLimiteMsg("");setView(v);if(v!=="inscripcion")setSelF(null);if(v==="inscripcion"){try{const saved=localStorage.getItem("fen-estudiante");if(saved&&!form.nombre){const d=JSON.parse(saved);const safe={};Object.keys(d).forEach(k=>{safe[k]=d[k]||""});setForm(p=>({...p,...safe,colOpen:false}))}}catch(e){}}};
+  const nav=v=>{setLimiteMsg("");subRef.current=false;setSubmitting(false);setView(v);if(v!=="inscripcion")setSelF(null);if(v==="inscripcion"){try{const saved=localStorage.getItem("fen-estudiante");if(saved&&!form.nombre){const d=JSON.parse(saved);const safe={};Object.keys(d).forEach(k=>{safe[k]=d[k]||""});setForm(p=>({...p,...safe,colOpen:false}))}}catch(e){}}};
 
   const doAdminLogin=()=>{
     if(adminPass===ADMIN_PASS){setAdminAuth(true);setAdminErr(false);setAdminPass("");setView("admin");setATab("inscritos");window.location.hash=""}
@@ -242,9 +242,11 @@ export default function App(){
   const validate=()=>{const e={};const n=form.nombre||"";const r=form.rut||"";const c=form.correo||"";const t=form.telefono||"";if(!n.trim())e.nombre="Requerido";if(!r||!validarRut(r))e.rut="RUT inválido. Verifica que esté correcto";if(!c||!c.includes("@")||!c.includes("."))e.correo="Correo inválido";if(!t||t.length<8)e.telefono="Teléfono inválido";if(!form.cursoEscolar)e.cursoEscolar="Requerido";if(!form.colegio)e.colegio="Requerido";if(form.colegio==="Otro"&&!(form.colegioOtro||"").trim())e.colegio="Escribe el nombre de tu colegio";if(!form.region)e.region="Requerido";if(!form.carreraInteres)e.carreraInteres="Requerido";if(!form.justificativo)e.justificativo="Requerido";setErr(e);return!Object.keys(e).length};
 
   const doSubmit=async()=>{
+    if(subRef.current)return;
     try{
     if(!validate())return;
     if(!selF||!selC)return;
+    subRef.current=true;setSubmitting(true);
     setLimiteMsg("");
     // Verificar RUT via Apps Script: duplicados + máximo 3 por mes
     if(APPS_SCRIPT_URL&&form.rut){
@@ -254,17 +256,17 @@ export default function App(){
         if(rutData){
           if(rutData.count>=3){
             setLimiteMsg("Ya alcanzaste el máximo de 3 inscripciones para este mes. ¡Vuelve el próximo mes para inscribirte a más clases!");
-            return;
+            subRef.current=false;setSubmitting(false);return;
           }
           if(rutData.inscripciones&&rutData.inscripciones.some(ins=>ins.curso===selC.nombre&&ins.fecha===selF.label)){
             setLimiteMsg("Ya estás inscrito/a en esta clase para esta fecha.");
-            return;
+            subRef.current=false;setSubmitting(false);return;
           }
           if(rutData.inscripciones){
             const conflicto=rutData.inscripciones.find(ins=>ins.fecha===selF.label&&ins.hora===selC.hora&&ins.curso!==selC.nombre);
             if(conflicto){
               setLimiteMsg("Ya estás inscrito/a en \""+conflicto.curso+"\" a la misma hora. Elige otro horario o fecha.");
-              return;
+              subRef.current=false;setSubmitting(false);return;
             }
           }
           if(rutData.inscripciones&&rutData.inscripciones.some(ins=>{
@@ -273,7 +275,7 @@ export default function App(){
             return cursoIns&&cursoIns.hora===selC.hora;
           })){
             setLimiteMsg("Ya tienes otra clase inscrita en este mismo horario ("+selF.label+", "+selC.hora+").");
-            return;
+            subRef.current=false;setSubmitting(false);return;
           }
         }
       }catch(e){}
@@ -295,7 +297,7 @@ export default function App(){
     }
     try{localStorage.setItem("fen-estudiante",JSON.stringify({nombre:form.nombre||"",rut:form.rut||"",correo:form.correo||"",telefono:form.telefono||"",cursoEscolar:form.cursoEscolar||"",region:form.region||"",colegio:form.colegio||"",colegioOtro:form.colegioOtro||"",colSearch:form.colSearch||"",carreraInteres:form.carreraInteres||"",justificativo:form.justificativo||""}))}catch(e){}
     setForm({nombre:"",rut:"",correo:"",telefono:"",cursoEscolar:"",colegio:"",colegioOtro:"",colSearch:"",colOpen:false,region:"",carreraInteres:"",justificativo:""});setView("confirmacion");
-    }catch(err){alert("Error: "+err.message);console.error(err)}
+    }catch(err){subRef.current=false;setSubmitting(false);alert("Error: "+err.message);console.error(err)}
   };
 
   const doDel=async id=>{const item=insc.find(i=>i.id===id);if(!item)return;const nf=item.fechaKey&&fechas[item.fechaKey]?{...fechas,[item.fechaKey]:{...fechas[item.fechaKey],cuposDisponibles:Math.min(fechas[item.fechaKey].cuposTotal,fechas[item.fechaKey].cuposDisponibles+1)}}:fechas;const ni=insc.filter(i=>i.id!==id);setFechas(nf);setInsc(ni);save(nf,ni,null)};
@@ -464,7 +466,7 @@ export default function App(){
           </div>
           <div style={{marginTop:16,background:"#F0F4FF",border:"1px solid #D8DDE8",borderRadius:8,padding:"12px 16px"}}><p style={{margin:0,fontSize:12,color:B.g700,lineHeight:1.5}}>Al inscribirte, autorizas a la Facultad de Economía y Negocios de la Universidad de Chile a utilizar tus datos para contactarte y enviarte información sobre carreras, actividades y procesos de admisión.</p></div>
           {limiteMsg&&<div style={{background:"#FEF2F2",border:"1px solid #FECACA",borderRadius:8,padding:"12px 16px",marginBottom:12}}><p style={{margin:0,fontSize:13,color:"#991B1B",fontWeight:600}}>{limiteMsg}</p></div>}
-          <button onClick={doSubmit} style={{marginTop:24,width:"100%",padding:"13px",background:B.blue,color:"#fff",border:"none",borderRadius:8,fontSize:15,fontWeight:700}}>Confirmar inscripción</button>
+          <button onClick={doSubmit} disabled={submitting} style={{marginTop:24,width:"100%",padding:"13px",background:submitting?"#8899AA":B.blue,color:"#fff",border:"none",borderRadius:8,fontSize:15,fontWeight:700,cursor:submitting?"not-allowed":"pointer",opacity:submitting?.7:1}}>{submitting?"Enviando inscripción...":"Confirmar inscripción"}</button>
         </div>
       </div>)}
 
