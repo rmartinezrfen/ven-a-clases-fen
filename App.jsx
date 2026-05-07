@@ -14,6 +14,7 @@ const ADMIN_PASS = "fenuchile2026"; // Contraseña del admin — cámbiala cuand
 
 // Fechas excluidas (feriados, recesos, etc.) — formato "YYYY-MM-DD"
 const FECHAS_EXCLUIDAS = ["2026-05-21","2026-05-27"]; // 21 mayo feriado, 27 mayo reservado colegio
+const FECHAS_EXCLUIDAS_CURSO = {"C25":["2026-05-19","2026-05-26","2026-05-28"]}; // Gonzalo Pardo - Intro Marketing
 
 // ============================================
 // GOOGLE APPS SCRIPT URL — Pegar aquí la URL del paso 9 de la guía
@@ -108,7 +109,7 @@ function genAllDates(){
         const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,"0"),dd=String(d.getDate()).padStart(2,"0");
         const fechaStr=y+"-"+m+"-"+dd;
         const key=curso.id+"_"+fechaStr;
-        const excluida=FECHAS_EXCLUIDAS.includes(fechaStr)||FECHAS_EXCLUIDAS.includes(key);
+        const excluida=FECHAS_EXCLUIDAS.includes(fechaStr)||FECHAS_EXCLUIDAS.includes(key)||(FECHAS_EXCLUIDAS_CURSO[c.id]&&FECHAS_EXCLUIDAS_CURSO[c.id].includes(fechaStr));
         if(!excluida){
           all[key]={key,cursoId:curso.id,fecha:new Date(d),fechaStr,
             label:DN[d.getDay()]+" "+d.getDate()+" de "+MN[d.getMonth()],
@@ -169,7 +170,7 @@ export default function App(){
   const [src,setSrc]=useState("");
   const [fDia,setFDia]=useState("Todos");
   const [loading,setLoading]=useState(true);
-  const [form,setForm]=useState({nombre:"",rut:"",correo:"",telefono:"",cursoEscolar:"",colegio:"",colegioOtro:"",colSearch:"",colOpen:false,region:"",carreraInteres:"",justificativo:""});
+  const [form,setForm]=useState({nombre:"",rut:"",correo:"",telefono:"",cursoEscolar:"",colegio:"",colegioOtro:"",colSearch:"",colOpen:false,region:"",carreraInteres:"",justificativo:"",tour:""});
   const [err,setErr]=useState({});const [limiteMsg,setLimiteMsg]=useState("");const [submitting,setSubmitting]=useState(false);const subRef=useRef(false);
   const [adminAuth,setAdminAuth]=useState(false);
   const [adminPass,setAdminPass]=useState("");
@@ -239,7 +240,7 @@ export default function App(){
   const totalC=useMemo(()=>Object.values(fechas).filter(f=>f.cursoId&&f.fecha>=cutoff&&f.fecha.getMonth()===SEMANA_INICIO.getMonth()&&f.fecha.getFullYear()===SEMANA_INICIO.getFullYear()).reduce((s,f)=>s+f.cuposDisponibles,0),[fechas,cutoff]);
 
   const uForm=(k,v)=>{if(k==="rut")v=formatRut(v);if(k==="telefono")v=v.replace(/[^0-9+]/g,"").slice(0,12);setForm(p=>{const nf={...p,[k]:v};if(k==="region"){nf.colegio="";nf.colSearch="";nf.colOpen=false;nf.colegioOtro=""}return nf});if(err[k])setErr(p=>({...p,[k]:null}))};
-  const validate=()=>{const e={};const n=form.nombre||"";const r=form.rut||"";const c=form.correo||"";const t=form.telefono||"";if(!n.trim())e.nombre="Requerido";if(!r||!validarRut(r))e.rut="RUT inválido. Verifica que esté correcto";if(!c||!c.includes("@")||!c.includes("."))e.correo="Correo inválido";if(!t||t.length<8)e.telefono="Teléfono inválido";if(!form.cursoEscolar)e.cursoEscolar="Requerido";if(!form.colegio)e.colegio="Requerido";if(form.colegio==="Otro"&&!(form.colegioOtro||"").trim())e.colegio="Escribe el nombre de tu colegio";if(!form.region)e.region="Requerido";if(!form.carreraInteres)e.carreraInteres="Requerido";if(!form.justificativo)e.justificativo="Requerido";setErr(e);return!Object.keys(e).length};
+  const validate=()=>{const e={};const n=form.nombre||"";const r=form.rut||"";const c=form.correo||"";const t=form.telefono||"";if(!n.trim())e.nombre="Requerido";if(!r||!validarRut(r))e.rut="RUT inválido. Verifica que esté correcto";if(!c||!c.includes("@")||!c.includes("."))e.correo="Correo inválido";if(!t||t.length<8)e.telefono="Teléfono inválido";if(!form.cursoEscolar)e.cursoEscolar="Requerido";if(!form.colegio)e.colegio="Requerido";if(form.colegio==="Otro"&&!(form.colegioOtro||"").trim())e.colegio="Escribe el nombre de tu colegio";if(!form.region)e.region="Requerido";if(!form.carreraInteres)e.carreraInteres="Requerido";if(!form.justificativo)e.justificativo="Requerido";if(!form.tour)e.tour="Requerido";setErr(e);return!Object.keys(e).length};
 
   const doSubmit=async()=>{
     if(subRef.current)return;
@@ -291,12 +292,12 @@ export default function App(){
     setFechas(nf);setInsc(nInsc);setCorreos(nc);setLastI(ni);save(nf,nInsc,nc);
     if(APPS_SCRIPT_URL){
       try{
-        const payload={action:"inscripcion",inscId:ni.id,nombre:form.nombre||"",rut:form.rut||"",correo:form.correo||"",telefono:form.telefono||"",cursoEscolar:form.cursoEscolar||"",region:form.region||"",colegio:colegioFinal,carreraInteres:form.carreraInteres||"",cursoNombre:selC.nombre,cursoProfesor:selC.profesor,emailProf:selC.emailProf||"",fechaClase:selF.label,cursoHora:selC.hora,cursoSala:selC.sala,justificativo:form.justificativo||""};
+        const payload={action:"inscripcion",inscId:ni.id,nombre:form.nombre||"",rut:form.rut||"",correo:form.correo||"",telefono:form.telefono||"",cursoEscolar:form.cursoEscolar||"",region:form.region||"",colegio:colegioFinal,carreraInteres:form.carreraInteres||"",cursoNombre:selC.nombre,cursoProfesor:selC.profesor,emailProf:selC.emailProf||"",fechaClase:selF.label,cursoHora:selC.hora,cursoSala:selC.sala,justificativo:form.justificativo||"",tour:form.tour||""};
         fetch(APPS_SCRIPT_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(payload)}).catch(()=>{});
       }catch(e){}
     }
-    try{localStorage.setItem("fen-estudiante",JSON.stringify({nombre:form.nombre||"",rut:form.rut||"",correo:form.correo||"",telefono:form.telefono||"",cursoEscolar:form.cursoEscolar||"",region:form.region||"",colegio:form.colegio||"",colegioOtro:form.colegioOtro||"",colSearch:form.colSearch||"",carreraInteres:form.carreraInteres||"",justificativo:form.justificativo||""}))}catch(e){}
-    setForm({nombre:"",rut:"",correo:"",telefono:"",cursoEscolar:"",colegio:"",colegioOtro:"",colSearch:"",colOpen:false,region:"",carreraInteres:"",justificativo:""});setView("confirmacion");
+    try{localStorage.setItem("fen-estudiante",JSON.stringify({nombre:form.nombre||"",rut:form.rut||"",correo:form.correo||"",telefono:form.telefono||"",cursoEscolar:form.cursoEscolar||"",region:form.region||"",colegio:form.colegio||"",colegioOtro:form.colegioOtro||"",colSearch:form.colSearch||"",carreraInteres:form.carreraInteres||"",justificativo:form.justificativo||"",tour:form.tour||""}))}catch(e){}
+    setForm({nombre:"",rut:"",correo:"",telefono:"",cursoEscolar:"",colegio:"",colegioOtro:"",colSearch:"",colOpen:false,region:"",carreraInteres:"",justificativo:"",tour:""});setView("confirmacion");
     }catch(err){subRef.current=false;setSubmitting(false);alert("Error: "+err.message);console.error(err)}
   };
 
@@ -462,6 +463,15 @@ export default function App(){
                 <option value="No, no lo necesito">No, no lo necesito</option>
               </select>
               {err.justificativo&&<span style={{fontSize:11,color:B.red,fontWeight:500}}>{err.justificativo}</span>}
+            </div>
+            <div style={{marginBottom:14}}>
+              <label style={{fontSize:12,fontWeight:600,color:B.g700}}>¿Te gustaría realizar un tour por la FEN después de la clase? *</label>
+              <select value={form.tour} onChange={e=>uForm("tour",e.target.value)} style={fi("tour")}>
+                <option value="">Selecciona una opción</option>
+                <option value="Sí, quiero hacer el tour">Sí, quiero hacer el tour</option>
+                <option value="No, gracias">No, gracias</option>
+              </select>
+              {err.tour&&<span style={{fontSize:11,color:B.red,fontWeight:500}}>{err.tour}</span>}
             </div>
           </div>
           <div style={{marginTop:16,background:"#F0F4FF",border:"1px solid #D8DDE8",borderRadius:8,padding:"12px 16px"}}><p style={{margin:0,fontSize:12,color:B.g700,lineHeight:1.5}}>Al inscribirte, autorizas a la Facultad de Economía y Negocios de la Universidad de Chile a utilizar tus datos para contactarte y enviarte información sobre carreras, actividades y procesos de admisión.</p></div>
