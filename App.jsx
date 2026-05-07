@@ -14,7 +14,7 @@ const ADMIN_PASS = "fenuchile2026"; // Contraseña del admin — cámbiala cuand
 
 // Fechas excluidas (feriados, recesos, etc.) — formato "YYYY-MM-DD"
 const FECHAS_EXCLUIDAS = ["2026-05-21","2026-05-27"]; // 21 mayo feriado, 27 mayo reservado colegio
-const FECHAS_EXCLUIDAS_CURSO = {"C25":["2026-05-19","2026-05-26","2026-05-28"],"C12":["2026-05-19"]}; // Gonzalo Pardo - Intro Marketing
+const FECHAS_EXCLUIDAS_CURSO = {"C25":["2026-05-19","2026-05-26","2026-05-28"]}; // Gonzalo Pardo - Intro Marketing
 
 // ============================================
 // GOOGLE APPS SCRIPT URL — Pegar aquí la URL del paso 9 de la guía
