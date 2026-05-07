@@ -109,7 +109,7 @@ function genAllDates(){
         const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,"0"),dd=String(d.getDate()).padStart(2,"0");
         const fechaStr=y+"-"+m+"-"+dd;
         const key=curso.id+"_"+fechaStr;
-        const excluida=FECHAS_EXCLUIDAS.includes(fechaStr)||FECHAS_EXCLUIDAS.includes(key)||(FECHAS_EXCLUIDAS_CURSO[c.id]&&FECHAS_EXCLUIDAS_CURSO[c.id].includes(fechaStr));
+        const excluida=FECHAS_EXCLUIDAS.includes(fechaStr)||FECHAS_EXCLUIDAS.includes(key)||(FECHAS_EXCLUIDAS_CURSO[curso.id]&&FECHAS_EXCLUIDAS_CURSO[curso.id].includes(fechaStr));
         if(!excluida){
           all[key]={key,cursoId:curso.id,fecha:new Date(d),fechaStr,
             label:DN[d.getDay()]+" "+d.getDate()+" de "+MN[d.getMonth()],
